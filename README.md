@@ -7,7 +7,7 @@ Script para trocar as cores do terminal [foot](https://codeberg.org/dnkl/foot) a
 | Arquivo | Descrição |
 |---|---|
 | `foot-colors.sh` | Script principal (bash + awk) |
-| `foot-theme.txt` | Tema de exemplo (paleta **Dracula**), pronto para editar |
+| `temas/` | 11 temas populares prontos (`.txt`) — veja a lista abaixo |
 | `foot.ini` | Configuração de exemplo do foot (referência de formato) |
 
 ## Requisitos
@@ -22,24 +22,47 @@ Script para trocar as cores do terminal [foot](https://codeberg.org/dnkl/foot) a
 ./foot-colors.sh
 ```
 
-Isso aplica o tema `foot-theme.txt` (que fica ao lado do script) no seu
+Sem opções, aplica o tema padrão (**dracula**) no seu
 `~/.config/foot/foot.ini`.
 
 Opções:
 
 ```
--f, --foot-ini ARQ   Caminho do foot.ini  (padrão: ~/.config/foot/foot.ini)
--t, --theme ARQ      Caminho do tema .txt (padrão: foot-theme.txt ao lado do script)
+-f, --foot-ini ARQ   Caminho do foot.ini (padrão: ~/.config/foot/foot.ini)
+-T, --tema NOME      Tema da pasta temas/ pelo nome (ex.: -T gruvbox-dark)
+-t, --theme ARQ      Caminho completo de um arquivo de tema .txt
+-l, --list           Lista os temas disponíveis
 -h, --help           Mostra a ajuda
 ```
 
 Exemplos:
 
 ```bash
-./foot-colors.sh -t meu-tema.txt            # usar outro tema
-./foot-colors.sh -f ~/outro/foot.ini        # agir sobre outro foot.ini
-./foot-colors.sh -f ~/outro/foot.ini -t tema.txt
+./foot-colors.sh -l                     # lista os temas disponíveis
+./foot-colors.sh -T gruvbox-dark        # aplica o Gruvbox Dark
+./foot-colors.sh -T tokyo-night         # aplica o Tokyo Night
+./foot-colors.sh -t ~/temas/meu.txt     # usa um tema .txt em qualquer lugar
+./foot-colors.sh -f ~/outro/foot.ini -T nord   # outro foot.ini + outro tema
 ```
+
+### Temas disponíveis
+
+| Nome | Estilo |
+|---|---|
+| `dracula` | escuro, roxo/rosa vibrantes (padrão) |
+| `gruvbox-dark` | escuro, tons quentes retrô |
+| `gruvbox-light` | claro, tons quentes |
+| `github-dark` | escuro, cores oficiais do GitHub |
+| `tokyo-night` | escuro, azul noturno |
+| `nord` | escuro, paleta fria nórdica |
+| `solarized-dark` | escuro, clássico de Ethan Schoonover |
+| `solarized-light` | claro, clássico de Ethan Schoonover |
+| `one-dark` | escuro, estilo Atom/VS Code |
+| `monokai` | escuro, alto contraste |
+| `catppuccin-mocha` | escuro, tons pastel |
+
+Dica: `-T` aceita o nome com ou sem a extensão `.txt` (ex.: `-T dracula` ou
+`-T dracula.txt`) e também aceita caminho de arquivo (`-T /caminho/para/tema.txt`).
 
 ### Exemplo de saída
 
@@ -119,7 +142,7 @@ foot -C -c ARQ     # valida um arquivo específico
 
 | Sintoma | Causa provável / ação |
 |---|---|
-| `ERRO: arquivo de tema não encontrado` | Confira o caminho com `-t`, ou coloque `foot-theme.txt` ao lado do script |
+| `ERRO: tema 'x' não encontrado` | Rode `./foot-colors.sh -l` para ver os nomes exatos dos temas disponíveis |
 | `ERRO: ... (o tema está em um formato válido?)` | Nenhuma entrada válida no tema — revise o formato `chave=valor_hex` |
 | Nada foi alterado | As chaves do tema precisam existir como **linhas ativas** nas seções `[color]`/`[colors-dark]`/`[colors-light]` do foot.ini (linhas comentadas são ignoradas de propósito) |
 | Cores não aparecem no terminal | Reinicie o foot — a config só é lida na inicialização |
@@ -127,8 +150,8 @@ foot -C -c ARQ     # valida um arquivo específico
 
 ## Como criar seu próprio tema
 
-1. Copie `foot-theme.txt` para um novo arquivo (ex.: `tema-meus.txt`).
+1. Copie um tema existente como base (ex.: `cp temas/dracula.txt temas/meu-tema.txt`).
 2. Substitua os valores hex (dica: `foot` exibe a paleta atual, ou use qualquer
    gerador de paletas — só copie os 6 dígitos hex de cada cor).
-3. Rode `./foot-colors.sh -t tema-meus.txt`.
+3. Rode `./foot-colors.sh -T meu-tema` (temas em `temas/` aparecem no `--list`).
 4. Não gostou? `cp ~/.config/foot/foot.ini.bkp ~/.config/foot/foot.ini` e rode de novo.

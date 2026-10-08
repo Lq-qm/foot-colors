@@ -17,13 +17,18 @@
 #   - Nenhuma outra linha/arquivo é alterada.
 #
 # Uso:
-#   ./foot-colors.sh [-f caminho/foot.ini] [-t caminho/tema.txt] [-h]
+#   ./foot-colors.sh [opções]
+#   ./foot-colors.sh -l                  # lista os temas disponíveis
+#   ./foot-colors.sh -T gruvbox-dark     # aplica um tema da pasta temas/
 #
 set -euo pipefail
 
 PROG=$(basename "$0")
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 FOOT_INI="${FOOT_INI:-$HOME/.config/foot/foot.ini}"
 THEME_FILE=""
+THEME_NAME=""
+LIST_ONLY=0
 
 usage() {
   cat <<EOF
@@ -34,9 +39,13 @@ Cria antes um backup do foot.ini (foot.ini.bkp) e, ao final, pede para
 reiniciar o foot.
 
 Opções:
-  -f, --foot-ini ARQ   Caminho do foot.ini  (padrão: ~/.config/foot/foot.ini)
-  -t, --theme ARQ      Caminho do tema .txt (padrão: foot-theme.txt ao lado do script)
+  -f, --foot-ini ARQ   Caminho do foot.ini (padrão: ~/.config/foot/foot.ini)
+  -T, --tema NOME      Tema da pasta temas/ pelo nome (ex.: -T gruvbox-dark)
+  -t, --theme ARQ      Caminho completo de um arquivo de tema .txt
+  -l, --list           Lista os temas disponíveis
   -h, --help           Mostra esta ajuda
+
+Sem -T/-t, o tema padrão (temas/dracula.txt) é usado.
 
 Formato do arquivo de tema (uma cor por linha, chave=valor hex):
   foreground=f8f8f2
@@ -57,16 +66,70 @@ EOF
 
 err()  { printf 'ERRO: %s\n' "$*" >&2; exit 1; }
 
+# lista os temas .txt disponíveis (pasta temas/ e raiz do projeto)
+list_themes() {
+  local files=() f name desc
+  for f in "$SCRIPT_DIR/temas/"*.txt "$SCRIPT_DIR/"*.txt; do
+    [ -f "$f" ] || continue
+    files+=("$f")
+  done
+  if [ "${#files[@]}" -eq 0 ]; then
+    printf 'Nenhum tema .txt encontrado em %s ou %s\n' "$SCRIPT_DIR/temas" "$SCRIPT_DIR" >&2
+    return 1
+  fi
+  printf 'Temas disponíveis (%s):\n\n' "${#files[@]}"
+  for f in "${files[@]}"; do
+    name=$(basename "$f" .txt)
+    desc=$(sed -n 's/^[[:space:]]*#[[:space:]]*//p' "$f" | head -n 1)
+    printf '  %-22s %s\n' "$name" "${desc:-sem descrição}"
+  done
+  printf '\nUso: %s -T <nome-do-tema>\n' "$PROG"
+}
+
+# resolve um nome de tema em um arquivo (caminho direto, temas/ ou raiz)
+resolve_theme() {
+  local nome=$1
+  if [ -f "$nome" ]; then printf '%s' "$nome"; return 0; fi
+  if [ -f "$SCRIPT_DIR/temas/$nome.txt" ]; then printf '%s' "$SCRIPT_DIR/temas/$nome.txt"; return 0; fi
+  if [ -f "$SCRIPT_DIR/temas/$nome" ]; then printf '%s' "$SCRIPT_DIR/temas/$nome"; return 0; fi
+  if [ -f "$SCRIPT_DIR/$nome.txt" ]; then printf '%s' "$SCRIPT_DIR/$nome.txt"; return 0; fi
+  if [ -f "$SCRIPT_DIR/$nome" ]; then printf '%s' "$SCRIPT_DIR/$nome"; return 0; fi
+  return 1
+}
+
 while [ $# -gt 0 ]; do
   case "$1" in
     -f|--foot-ini) [ $# -ge 2 ] || err "a opção $1 requer um argumento"; FOOT_INI=$2; shift 2 ;;
+    -T|--tema)     [ $# -ge 2 ] || err "a opção $1 requer um argumento"; THEME_NAME=$2; shift 2 ;;
     -t|--theme)    [ $# -ge 2 ] || err "a opção $1 requer um argumento"; THEME_FILE=$2; shift 2 ;;
+    -l|--list)     LIST_ONLY=1; shift ;;
     -h|--help)     usage; exit 0 ;;
     *) err "opção desconhecida: $1 (use --help)" ;;
   esac
 done
 
-[ -n "$THEME_FILE" ] || THEME_FILE=$(cd "$(dirname "$0")" && pwd)/foot-theme.txt
+if [ "$LIST_ONLY" -eq 1 ]; then
+  list_themes
+  exit $?
+fi
+
+# tema escolhido pelo nome (-T) ou caminho (-t)
+if [ -n "$THEME_NAME" ]; then
+  if ! THEME_FILE=$(resolve_theme "$THEME_NAME"); then
+    err "tema '$THEME_NAME' não encontrado (use --list para ver os disponíveis)"
+  fi
+fi
+
+# tema padrão
+if [ -z "$THEME_FILE" ]; then
+  if [ -f "$SCRIPT_DIR/temas/dracula.txt" ]; then
+    THEME_FILE="$SCRIPT_DIR/temas/dracula.txt"
+  elif [ -f "$SCRIPT_DIR/foot-theme.txt" ]; then
+    THEME_FILE="$SCRIPT_DIR/foot-theme.txt"
+  else
+    err "nenhum tema padrão encontrado; use -T <nome> ou -t <arquivo> (veja --list)"
+  fi
+fi
 
 # ---------- validações iniciais ----------
 [ -f "$FOOT_INI" ]   || err "foot.ini não encontrado: $FOOT_INI"
@@ -248,10 +311,17 @@ while IFS= read -r l; do
   esac
 done < "$stats"
 
+# caminho do tema de forma legível (relativo ao projeto, se possível)
+theme_display=$THEME_FILE
+case "$theme_display" in
+  "$SCRIPT_DIR"/*) theme_display=${theme_display#"$SCRIPT_DIR"/} ;;
+esac
+
 if [ "$n_repl" -gt 0 ]; then
   printf '✔ Cores do foot atualizadas com sucesso!\n'
   printf '  • Arquivo modificado: %s\n' "$FOOT_INI"
   printf '  • Backup criado:      %s\n' "$BACKUP"
+  printf '  • Tema:               %s\n' "$theme_display"
   printf '  • Cores alteradas:    %s\n' "$n_repl"
   printf '  • Flags:             %s\n' "$keys"
   if [ "$n_same" -gt 0 ]; then
@@ -266,6 +336,7 @@ else
   printf 'ℹ Nenhuma cor foi alterada no foot.ini.\n'
   printf '  • Arquivo verificado: %s\n' "$FOOT_INI"
   printf '  • Backup criado:      %s\n' "$BACKUP"
+  printf '  • Tema:               %s\n' "$theme_display"
   if [ "$n_same" -gt 0 ]; then
     printf '  • Cores já estavam iguais ao tema: %s\n' "$n_same"
   fi
