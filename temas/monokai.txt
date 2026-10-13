@@ -12,7 +12,7 @@ regular5=fd971f   # magenta
 regular6=66d9ef   # cyan
 regular7=f8f8f2   # white
 
-bright0=383838    # bright black
+bright0=757575    # bright black
 bright1=f92672    # bright red
 bright2=a6e22e    # bright green
 bright3=e6db74    # bright yellow
